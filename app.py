@@ -15,7 +15,7 @@ Deployed for free on Streamlit Community Cloud (share.streamlit.io).
 
 import streamlit as st
 import pandas as pd
-import requests
+import cloudscraper
 import plotly.express as px
 from datetime import datetime
 
@@ -33,6 +33,18 @@ API_BASE_URL = st.secrets.get("API_BASE_URL", "")
 API_KEY = st.secrets.get("API_KEY", "")
 
 
+@st.cache_resource
+def get_scraper():
+    """
+    A cloudscraper session, reused across reruns. cloudscraper acts just
+    like a requests.Session but automatically solves the kind of
+    JavaScript anti-bot challenge InfinityFree puts in front of automated
+    (non-browser) requests — it runs the same math the challenge's JS
+    would, gets the resulting cookie, and retries, all under the hood.
+    """
+    return cloudscraper.create_scraper(browser={"custom": "chrome"})
+
+
 def fetch(report: str, **params) -> list | dict:
     """Calls the PHP data bridge and returns the parsed JSON."""
     if not API_BASE_URL or not API_KEY:
@@ -44,17 +56,11 @@ def fetch(report: str, **params) -> list | dict:
 
     params["report"] = report
     params["key"] = API_KEY
-    # InfinityFree (the PHP host) blocks requests that look like bots/scripts
-    # by default — Python's requests library identifies itself as
-    # "python-requests/x.x" unless told otherwise, which gets silently
-    # dropped. Sending browser-like headers avoids that.
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36",
-        "Accept": "application/json",
-    }
+    scraper = get_scraper()
+
     try:
-        resp = requests.get(API_BASE_URL, params=params, headers=headers, timeout=15)
-    except requests.exceptions.RequestException as e:
+        resp = scraper.get(API_BASE_URL, params=params, timeout=20)
+    except Exception as e:
         st.error(f"Couldn't connect to the store's server at all ({report}): {e}")
         st.stop()
 
