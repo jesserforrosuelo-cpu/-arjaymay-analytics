@@ -44,8 +44,16 @@ def fetch(report: str, **params) -> list | dict:
 
     params["report"] = report
     params["key"] = API_KEY
+    # InfinityFree (the PHP host) blocks requests that look like bots/scripts
+    # by default — Python's requests library identifies itself as
+    # "python-requests/x.x" unless told otherwise, which gets silently
+    # dropped. Sending browser-like headers avoids that.
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36",
+        "Accept": "application/json",
+    }
     try:
-        resp = requests.get(API_BASE_URL, params=params, timeout=15)
+        resp = requests.get(API_BASE_URL, params=params, headers=headers, timeout=15)
         resp.raise_for_status()
         return resp.json()
     except requests.exceptions.RequestException as e:
