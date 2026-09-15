@@ -59,6 +59,13 @@ def fetch(report: str, **params) -> list | dict:
     except requests.exceptions.RequestException as e:
         st.error(f"Couldn't reach the store's data ({report}): {e}")
         st.stop()
+    except ValueError:
+        # The request succeeded but the body wasn't valid JSON — show what
+        # actually came back so we can see why (bot-block page, PHP error,
+        # empty response, etc).
+        st.error(f"Got a response, but it wasn't valid JSON for report '{report}'.")
+        st.code(f"Status code: {resp.status_code}\n\nHeaders: {dict(resp.headers)}\n\nBody (first 1000 chars):\n{resp.text[:1000]}")
+        st.stop()
 
 
 # ==================== HEADER ====================
