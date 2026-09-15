@@ -54,17 +54,22 @@ def fetch(report: str, **params) -> list | dict:
     }
     try:
         resp = requests.get(API_BASE_URL, params=params, headers=headers, timeout=15)
-        resp.raise_for_status()
-        return resp.json()
     except requests.exceptions.RequestException as e:
-        st.error(f"Couldn't reach the store's data ({report}): {e}")
+        st.error(f"Couldn't connect to the store's server at all ({report}): {e}")
         st.stop()
+
+    # Got a response — but is it actually JSON? (Requests' resp.json() can
+    # itself raise an error that looks like a connection error, so we check
+    # manually here instead of relying on exception type.)
+    try:
+        return resp.json()
     except ValueError:
-        # The request succeeded but the body wasn't valid JSON — show what
-        # actually came back so we can see why (bot-block page, PHP error,
-        # empty response, etc).
         st.error(f"Got a response, but it wasn't valid JSON for report '{report}'.")
-        st.code(f"Status code: {resp.status_code}\n\nHeaders: {dict(resp.headers)}\n\nBody (first 1000 chars):\n{resp.text[:1000]}")
+        st.code(
+            f"Status code: {resp.status_code}\n\n"
+            f"Headers: {dict(resp.headers)}\n\n"
+            f"Body (first 1000 chars):\n{resp.text[:1000]}"
+        )
         st.stop()
 
 
